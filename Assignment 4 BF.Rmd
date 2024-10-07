@@ -1,0 +1,123 @@
+---
+title: "A44"
+output: html_document
+date: "2024-10-07"
+---
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(forecast)
+library(fpp2)
+library(ggplot2)
+
+# Load the data
+Monthly_Fuel_Prices <- read_excel("C:/Users/malho/Downloads/Monthly_Fuel_Prices.xlsx")
+df <- Monthly_Fuel_Prices
+
+# Display the first few rows of the dataset
+print(head(df))
+
+# Check column names
+print(colnames(df))
+
+# Convert the 'Date' column to a proper time series object
+ts_data <- ts(df$`Petrol (USD)`, start=c(2003, 6), frequency=12)  # Monthly data starting from June 2003
+
+# Attributes of the time series
+attributes(ts_data)
+
+# Plot the time series data
+plot(ts_data, main="Monthly Petrol Price Time Series", ylab="Petrol Price (USD)", xlab="Year")
+
+# ACF plot to understand autocorrelation
+Acf(ts_data)
+
+# Forecasting methods
+# Mean Forecast
+mean_forecast <- meanf(ts_data, h=5)
+
+# Naive Forecast
+naive_forecast <- naive(ts_data, h=5)
+
+# Random Walk Forecast (with and without drift)
+rwf_forecast <- rwf(ts_data, h=5)
+rwf_forecast_drift <- rwf(ts_data, h=5, drift=TRUE)
+
+# Seasonal Naive Forecast
+snaive_forecast <- snaive(ts_data, h=5)
+
+# Moving Averages
+MA5_forecast <- ma(ts_data, order=5)
+MA9_forecast <- ma(ts_data, order=9)
+
+# Plot original data and overlay forecasts using autoplot (fpp2 handles forecast objects well)
+autoplot(ts_data) +
+  autolayer(mean_forecast$mean, series="Mean Forecast", PI=FALSE, color="blue") +
+  autolayer(naive_forecast$mean, series="Naive Forecast", PI=FALSE, color="red") +
+  autolayer(rwf_forecast$mean, series="Random Walk", PI=FALSE, color="green") +
+  autolayer(snaive_forecast$mean, series="Seasonal Naive", PI=FALSE, color="black") +
+  ggtitle("Various Forecasts on Petrol Prices") +
+  xlab("Year") + ylab("Petrol Price (USD)") +
+  guides(colour=guide_legend(title="Forecasts"))
+
+# ETS (Exponential Smoothing State Space Model)
+ets_model <- ets(ts_data)
+ets_forecast <- forecast(ets_model, h=5)
+
+# Plot ETS forecast
+autoplot(ets_forecast, main="ETS Forecast for Petrol Prices")
+
+# Holt-Winters Model
+HW_forecast <- HoltWinters(ts_data)
+autoplot(forecast(HW_forecast, h=5), main="Holt-Winters Fitted Model")
+
+# Simple Exponential Smoothing without trend and seasonality
+SSE_Simple <- HoltWinters(ts_data, beta=FALSE, gamma=FALSE)
+plot(SSE_Simple, main="Simple Exponential Smoothing")
+
+# Check SSE (Sum of Squared Errors)
+SSE_Simple$SSE
+
+# Forecast using ETS model
+forecast_ets_1 <- forecast(ets_model, h=5)
+autoplot(forecast_ets_1, main="ETS Model Forecast")
+
+# Forecast using Holt-Winters model
+forecast_hw <- forecast(HW_forecast, h=5)
+autoplot(forecast_hw, main="Holt-Winters Forecast")
+
+### Model Comparison based on Accuracy
+
+# Accuracy for Mean Forecast
+acc_mean <- accuracy(mean_forecast)
+
+# Accuracy for Naive Forecast
+acc_naive <- accuracy(naive_forecast)
+
+# Accuracy for Random Walk Forecast
+acc_rwf <- accuracy(rwf_forecast)
+
+# Accuracy for Seasonal Naive Forecast
+acc_snaive <- accuracy(snaive_forecast)
+
+# Accuracy for ETS model
+acc_ets <- accuracy(ets_forecast)
+
+# Accuracy for Holt-Winters model
+acc_hw <- accuracy(forecast_hw)
+
+# Extract the RMSE values from the first row (training set)
+rmse_values <- data.frame(
+  Model = c("Mean", "Naive", "Random Walk", "Seasonal Naive", "ETS", "Holt-Winters"),
+  RMSE = c(acc_mean[1, "RMSE"], acc_naive[1, "RMSE"], acc_rwf[1, "RMSE"], acc_snaive[1, "RMSE"], acc_ets[1, "RMSE"], acc_hw[1, "RMSE"])
+)
+
+print(rmse_values)
+
+# Identify the best model based on RMSE
+best_model <- rmse_values[which.min(rmse_values$RMSE), ]
+print(paste("The best model based on RMSE is:", best_model$Model))
+
+# End of script
+```
